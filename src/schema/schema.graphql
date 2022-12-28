@@ -1,0 +1,114 @@
+type Account @entity {
+  id: ID!
+  address: Bytes!
+  offers: [Offer!]!
+  offersCount: BigInt!
+  purchases: [Transaction!]!
+  purchasesCount: BigInt!
+  sales: [Transaction!]!
+  salesCount: BigInt!
+  historyMonths: [AccountMonth!]!
+  historyMonthsCount: BigInt!
+}
+
+type AccountMonth @entity {
+  # <accountAddress>-<year>-<month>
+  id: ID!
+  account: Account!
+  year: Int!
+  month: Int!
+  createdOffers: [Offer!]!
+  createdOffersCount: BigInt!
+  updatedOffers: [Offer!]!
+  updatedOffersCount: BigInt!
+  deletedOffers: [Offer!]!
+  deletedOffersCount: BigInt!
+  purchases: [Transaction!]!
+  purchasesCount: BigInt!
+  sales: [Transaction!]!
+  salesCount: BigInt!
+}
+
+type Token @entity {
+  id: ID!
+  address: Bytes!
+  decimals: BigInt
+  name: String
+  symbol: String
+  offers: [Offer!]!
+  offersCount: BigInt!
+  transactions: [Transaction!]!
+  transactionsCount: BigInt!
+  historyDays: [TokenDay!]!
+  historyDaysCount: BigInt!
+  historyMonths: [TokenMonth!]!
+  historyMonthsCount: BigInt!
+}
+
+type TokenDay @entity {
+  # <tokenAddress>-<year>-<month>-<day>
+  id: ID!
+  token: Token!
+  year: Int!
+  month: Int!
+  day: Int!
+  salesVolume: BigInt!
+  createdOffers: [Offer!]!
+  createdOffersCount: BigInt!
+  updatedOffers: [Offer!]!
+  updatedOffersCount: BigInt!
+  deletedOffers: [Offer!]!
+  deletedOffersCount: BigInt!
+  transactions: [Transaction!]!
+  transactionsCount: BigInt!
+}
+
+type TokenMonth @entity {
+  # <tokenAddress>-<year>-<month>
+  id: ID!
+  token: Token!
+  year: Int!
+  month: Int!
+  salesVolume: BigInt!
+  createdOffers: [Offer!]!
+  createdOffersCount: BigInt!
+  updatedOffers: [Offer!]!
+  updatedOffersCount: BigInt!
+  deletedOffers: [Offer!]!
+  deletedOffersCount: BigInt!
+  transactions: [Transaction!]!
+  transactionsCount: BigInt!
+}
+
+type OfferPrice @entity {
+  id: ID!
+  offer: Offer!
+  price: BigInt!
+  createdAtBlock: BigInt!
+  createdAtTimestamp: BigInt!
+}
+
+type Transaction @entity {
+  id: ID!
+  offer: Offer!
+  buyer: Account!
+  price: BigInt!
+  quantity: BigInt!
+  createdAtBlock: BigInt!
+  createdAtTimestamp: BigInt!
+}
+
+type Offer @entity {
+  id: ID!
+  seller: Account!
+  offerToken: Token!
+  buyerToken: Token!
+  prices: [OfferPrice!]!
+  pricesCount: BigInt!
+  transactions: [Transaction!]!
+  transactionsCount: BigInt!
+  createdAtBlock: BigInt!
+  createdAtTimestamp: BigInt!
+  removedAtBlock: BigInt
+  removedAtTimestamp: BigInt
+}
