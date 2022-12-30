@@ -2,19 +2,23 @@ import { gql, GraphQLClient } from 'graphql-request'
 import _chunk from 'lodash/chunk'
 import _sumBy from 'lodash/sumBy'
 import { isStablecoinAddress } from 'src/services/Stablecoin'
+import { TransactionType } from './TransactionType'
 
 const BATCH_SIZE = 500
+
+interface Transaction {
+  type: TransactionType;
+  price: number;
+  quantity: number;
+  buyerToken: string;
+}
 
 export interface YamToken {
   address: string;
   unitPrice: number;
   quantity: number;
   transactionsCount: number;
-  transactions: {
-    price: number;
-    quantity: number;
-    buyerToken: string;
-  }[];
+  transactions: Transaction[];
   currentHistoryMonths?: {
     year: number;
     month: number;
@@ -37,6 +41,7 @@ export interface YamToken {
 
 interface TransactionEntity {
   id: string;
+  type: TransactionType;
   price: string;
   quantity: string;
   offer: {
@@ -82,13 +87,14 @@ function parsePrice (transaction: TransactionEntity) {
   return +transaction.price / Math.pow(10, buyerTokenDecimals)
 }
 
-function parseTransactions (transactions: TransactionEntity[], offerTokenDecimals: number) {
+function parseTransactions (transactions: TransactionEntity[]) {
   return transactions
     .filter(({ offer }) => isStablecoinAddress(offer.buyerToken.address) ||
       isStablecoinAddress(offer.offerToken.address))
     .map(transaction => ({
+      type: transaction.type,
       price: parsePrice(transaction),
-      quantity: +transaction.quantity / Math.pow(10, offerTokenDecimals),
+      quantity: +transaction.quantity / Math.pow(10, +transaction.offer.offerToken.decimals),
       buyerToken: transaction.offer.buyerToken.address,
     }))
 }
@@ -105,20 +111,27 @@ function parseHistoryMonth (historyMonth?: HistoryMonthEntity, decimals = 18) {
   }
 }
 
+function getVolume (transactions: Transaction[]) {
+  return _sumBy(transactions, item => item.type === TransactionType.REALTOKENTOERC20
+    ? item.price * item.quantity
+    : item.quantity)
+}
+
 export function parseTokens (tokens: GetTokens['tokens'][0][]): YamToken[] {
   return tokens.map(token => {
-    const offerTokenDecimals = +token.decimals
-    const transactions = parseTransactions(token.transactions, offerTokenDecimals)
-    const quantity = _sumBy(transactions, 'quantity')
+    const transactions = parseTransactions(token.transactions)
+    const quantity = _sumBy(transactions, item => item.type === TransactionType.REALTOKENTOERC20
+      ? item.quantity
+      : (item.quantity * item.price))
 
     return {
       address: token.address,
       transactionsCount: token.transactionsCount,
-      unitPrice: _sumBy(transactions, item => item.price * item.quantity) / quantity,
+      unitPrice: getVolume(transactions) / quantity,
       quantity,
       transactions,
-      currentHistoryMonths: parseHistoryMonth(token.historyMonths[0], offerTokenDecimals),
-      lastHistoryMonths: parseHistoryMonth(token.historyMonths[1], offerTokenDecimals),
+      currentHistoryMonths: parseHistoryMonth(token.historyMonths[0], +token.decimals),
+      lastHistoryMonths: parseHistoryMonth(token.historyMonths[1], +token.decimals),
     }
   })
 }
@@ -141,6 +154,7 @@ export function getTokens (client: GraphQLClient) {
               first: 5,
               where: { type_in: [REALTOKENTOERC20, ERC20TOREALTOKEN] }
             ) {
+              type
               offer {
                 offerToken { address decimals }
                 buyerToken { address decimals }
