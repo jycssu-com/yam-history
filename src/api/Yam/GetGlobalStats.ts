@@ -1,30 +1,41 @@
 import { gql, GraphQLClient } from 'graphql-request'
 
+export interface Statistics {
+  offersCreatedCount: number;
+  offersWithPriceChangesCount: number;
+  offersDeletedCount: number;
+  offersAcceptedCount: number;
+  offersPrivateCount: number;
+  offersActiveCount: number;
+  offersEmptyCount: number;
+  accountsCount: number;
+  accountsWithOffersCount: number;
+  accountsWithSalesCount: number;
+  accountsWithPurchasesCount: number;
+  accountsWithSwapsCount: number;
+  transactionsCount: number;
+  realTokenTradeVolume: number;
+}
+
+interface StatisticsDay extends Statistics {
+  id: string;
+  year: number;
+  month: number;
+  day: number;
+}
+
+interface StatisticsMonth extends Statistics {
+  id: string;
+  year: number;
+  month: number;
+}
+
 export interface GlobalStats {
-  statistic: {
-    offersCreatedCount: number;
-    offersWithPriceChangesCount: number;
-    offersDeletedCount: number;
-    offersAcceptedCount: number;
-    offersPrivateCount: number;
-    offersActiveCount: number;
-    offersEmptyCount: number;
-    accountsCount: number;
-    accountsWithOffersCount: number;
-    accountsWithSalesCount: number;
-    accountsWithPurchasesCount: number;
-    accountsWithSwapsCount: number;
-    transactionsCount: number;
-    realTokenTradeVolume: number;
-  };
-  statisticDays: {
-    id: string;
-    year: number;
-    month: number;
-    day: number;
-    transactionsCount: number;
-    realTokenTradeVolume: number;
-  }[];
+  statistic: Statistics;
+  statisticsDays: StatisticsDay[];
+  cumulativeStatisticsDays: StatisticsDay[];
+  statisticsMonths: StatisticsMonth[];
+  cumulativeStatisticsMonths: StatisticsMonth[];
   topTokenCurrentMonth: { token: string; volume: number }[];
   topBuyerCurrentMonth: { account: string; purchasesCount: number }[];
   topSellerCurrentMonth: { account: string; salesCount: number }[];
@@ -55,30 +66,41 @@ interface TopAccountEntity {
   transactionsCount: string;
 }
 
+interface StatisticsEntity {
+  offersCreatedCount: string;
+  offersWithPriceChangesCount: string;
+  offersDeletedCount: string;
+  offersAcceptedCount: string;
+  offersPrivateCount: string;
+  offersActiveCount: string;
+  accountsCount: string;
+  accountsWithOffersCount: string;
+  accountsWithSalesCount: string;
+  accountsWithPurchasesCount: string;
+  accountsWithSwapsCount: string;
+  transactionsCount: string;
+  realTokenTradeVolume: string;
+}
+
+interface StatisticsDayEntity extends StatisticsEntity {
+  id: string;
+  year: string;
+  month: string;
+  day: string;
+}
+
+interface StatisticsMonthEntity extends StatisticsEntity {
+  id: string;
+  year: string;
+  month: string;
+}
+
 interface GetGlobalStats {
-  lastCumulativeStatistics: {
-    offersCreatedCount: string;
-    offersWithPriceChangesCount: string;
-    offersDeletedCount: string;
-    offersAcceptedCount: string;
-    offersPrivateCount: string;
-    offersActiveCount: string;
-    accountsCount: string;
-    accountsWithOffersCount: string;
-    accountsWithSalesCount: string;
-    accountsWithPurchasesCount: string;
-    accountsWithSwapsCount: string;
-    transactionsCount: string;
-    realTokenTradeVolume: string;
-  }[];
-  statisticDays: {
-    id: string;
-    year: string;
-    month: string;
-    day: string;
-    transactionsCount: string;
-    realTokenTradeVolume: string;
-  }[];
+  lastCumulativeStatistics: StatisticsEntity[];
+  statisticsDays: StatisticsDayEntity[];
+  cumulativeStatisticsDays: StatisticsDayEntity[];
+  statisticsMonths: StatisticsMonthEntity[];
+  cumulativeStatisticsMonths: StatisticsMonthEntity[];
   topTokenCurrentMonth: TopTokenEntity[];
   topBuyerCurrentMonth: TopBuyerEntity[];
   topSellerCurrentMonth: TopSellerEntity[];
@@ -96,7 +118,7 @@ interface GetGlobalStatsVariables {
   lastMonthYear: string;
 }
 
-function parseStatistic (statistic: GetGlobalStats['lastCumulativeStatistics'][0]) {
+function parseStatistic (statistic: StatisticsEntity) {
   return {
     offersCreatedCount: parseInt(statistic.offersCreatedCount),
     offersWithPriceChangesCount: parseInt(statistic.offersWithPriceChangesCount),
@@ -115,14 +137,22 @@ function parseStatistic (statistic: GetGlobalStats['lastCumulativeStatistics'][0
   }
 }
 
-function parseStatisticDays (statisticDays: GetGlobalStats['statisticDays']) {
+function parseStatisticsDays (statisticDays: StatisticsDayEntity[]) {
   return statisticDays.map((item) => ({
     id: item.id,
     year: parseInt(item.year),
     month: parseInt(item.month),
     day: parseInt(item.day),
-    transactionsCount: parseInt(item.transactionsCount),
-    realTokenTradeVolume: parseInt(item.realTokenTradeVolume) / (10 ** 18),
+    ...parseStatistic(item),
+  }))
+}
+
+function parseStatisticsMonths (statisticsMonths: StatisticsMonthEntity[]) {
+  return statisticsMonths.map((item) => ({
+    id: item.id,
+    year: parseInt(item.year),
+    month: parseInt(item.month),
+    ...parseStatistic(item),
   }))
 }
 
@@ -157,7 +187,10 @@ function parseTokens (tokens: TopTokenEntity[]) {
 function parseResult (result: GetGlobalStats): GlobalStats {
   return {
     statistic: parseStatistic(result.lastCumulativeStatistics[0]),
-    statisticDays: parseStatisticDays(result.statisticDays),
+    statisticsDays: parseStatisticsDays(result.statisticsDays),
+    cumulativeStatisticsDays: parseStatisticsDays(result.cumulativeStatisticsDays),
+    statisticsMonths: parseStatisticsMonths(result.statisticsMonths),
+    cumulativeStatisticsMonths: parseStatisticsMonths(result.cumulativeStatisticsMonths),
     topTokenCurrentMonth: parseTokens(result.topTokenCurrentMonth),
     topBuyerCurrentMonth: parseBuyers(result.topBuyerCurrentMonth),
     topSellerCurrentMonth: parseSellers(result.topSellerCurrentMonth),
@@ -199,7 +232,7 @@ export function getGlobalStats (client: GraphQLClient) {
           transactionsCount
           realTokenTradeVolume
         }
-        statisticDays: statisticDays (
+        statisticsDays: statisticDays (
           orderBy: id,
           orderDirection: desc,
           first: 30
@@ -208,6 +241,95 @@ export function getGlobalStats (client: GraphQLClient) {
           year
           month
           day
+
+          offersCreatedCount
+          offersWithPriceChangesCount
+          offersDeletedCount
+          offersAcceptedCount
+          offersPrivateCount
+          offersActiveCount
+
+          accountsCount
+          accountsWithOffersCount
+          accountsWithSalesCount
+          accountsWithPurchasesCount
+          accountsWithSwapsCount
+
+          transactionsCount
+          realTokenTradeVolume
+        }
+        cumulativeStatisticsDays: cumulativeStatisticDays (
+          orderBy: id,
+          orderDirection: desc,
+          first: 30
+        ) {
+          id
+          year
+          month
+          day
+
+          offersCreatedCount
+          offersWithPriceChangesCount
+          offersDeletedCount
+          offersAcceptedCount
+          offersPrivateCount
+          offersActiveCount
+
+          accountsCount
+          accountsWithOffersCount
+          accountsWithSalesCount
+          accountsWithPurchasesCount
+          accountsWithSwapsCount
+
+          transactionsCount
+          realTokenTradeVolume
+        }
+        statisticsMonths: statisticMonths (
+          orderBy: id,
+          orderDirection: desc,
+          first: 12
+        ) {
+          id
+          year
+          month
+
+          offersCreatedCount
+          offersWithPriceChangesCount
+          offersDeletedCount
+          offersAcceptedCount
+          offersPrivateCount
+          offersActiveCount
+
+          accountsCount
+          accountsWithOffersCount
+          accountsWithSalesCount
+          accountsWithPurchasesCount
+          accountsWithSwapsCount
+
+          transactionsCount
+          realTokenTradeVolume
+        }
+        cumulativeStatisticsMonths: cumulativeStatisticMonths (
+          orderBy: id,
+          orderDirection: desc,
+          first: 12
+        ) {
+          id
+          year
+          month
+
+          offersCreatedCount
+          offersWithPriceChangesCount
+          offersDeletedCount
+          offersAcceptedCount
+          offersPrivateCount
+          offersActiveCount
+
+          accountsCount
+          accountsWithOffersCount
+          accountsWithSalesCount
+          accountsWithPurchasesCount
+          accountsWithSwapsCount
 
           transactionsCount
           realTokenTradeVolume

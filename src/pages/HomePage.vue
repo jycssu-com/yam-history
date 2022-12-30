@@ -16,12 +16,8 @@
         </div>
       </div>
 
-      <transaction-statistic-chart :model-value="globalStats" />
+      <global-stats-chart class="q-my-md" :model-value="globalStats" />
     </template>
-
-    <div style="white-space: pre;">
-      {{ globalStatsJSON }}
-    </div>
 
     <div>
       Subgraph used: <a :href="subgraphLink" target="_blank" v-text="subgraphLink" />
@@ -38,7 +34,7 @@ import TopTokenVolumes from 'src/components/TopTokenVolumes.vue'
 import TopSellerAccounts from 'src/components/TopSellerAccounts.vue'
 import TopBuyerAccounts from 'src/components/TopBuyerAccounts.vue'
 import TopAccounts from 'src/components/TopAccounts.vue'
-import TransactionStatisticChart from 'src/components/statistics/TransactionStatisticChart.vue'
+import GlobalStatsChart from 'src/components/statistics/GlobalStatsChart.vue'
 
 export default defineComponent({
   name: 'HomePage',
@@ -47,7 +43,7 @@ export default defineComponent({
     TopSellerAccounts,
     TopBuyerAccounts,
     TopAccounts,
-    TransactionStatisticChart,
+    GlobalStatsChart,
   },
   setup () {
     const globalStats = ref<GlobalStats | undefined>(undefined)
@@ -86,7 +82,6 @@ export default defineComponent({
 
     return {
       globalStats,
-      globalStatsJSON: computed(() => JSON.stringify(globalStats.value?.statistic, null, 4)),
       loading,
       topBuyerCurrentMonth,
       topBuyerLastMonth,
