@@ -7,7 +7,7 @@
     <q-table
       :loading="loading"
       :title="title"
-      :rows="transactions"
+      :rows="rows"
       :columns="columns"
       :rows-per-page-options="[0]"
       row-key="id"
@@ -43,6 +43,7 @@ import { useRealTokenStore } from '../stores/useRealTokenStore'
 import formatDistance from 'date-fns/formatDistance'
 import { TableColumn } from 'src/utils/TableColumn'
 import { RealToken } from 'src/api/realt.repository'
+import { TransactionType } from 'src/api/Yam/TransactionType'
 
 export default defineComponent({
   name: 'TokenPage',
@@ -70,6 +71,18 @@ export default defineComponent({
         loading.value = false
       }
     }
+
+    const rows = computed(() => transactions.value.map(item => {
+      const quantity = item.type === TransactionType.REALTOKENTOERC20
+        ? item.quantity
+        : (item.quantity * item.price)
+
+      const price = item.type === TransactionType.REALTOKENTOERC20
+        ? item.price
+        : item.quantity / (item.price * item.quantity)
+
+      return { ...item, quantity, price }
+    }))
 
     watch(tokenAddress, fetch, { immediate: true })
 
@@ -135,16 +148,18 @@ export default defineComponent({
         label: 'Seller',
         align: 'left',
         sortable: true,
-        // TODO: Depends on the offer type
-        field: item => item.maker,
+        field: item => item.type === TransactionType.REALTOKENTOERC20
+          ? item.maker
+          : item.taker,
       },
       {
         name: 'buyer',
         label: 'Buyer',
         align: 'left',
         sortable: true,
-        // TODO: Depends on the offer type
-        field: item => item.taker,
+        field: item => item.type === TransactionType.REALTOKENTOERC20
+          ? item.taker
+          : item.maker,
       },
     ]
 
@@ -159,7 +174,7 @@ export default defineComponent({
     return {
       loading,
       token,
-      transactions,
+      rows,
       columns,
       title,
     }
